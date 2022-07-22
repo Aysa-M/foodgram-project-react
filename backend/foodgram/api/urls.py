@@ -1,6 +1,5 @@
-from django.urls import include, path
 from rest_framework import routers
-
+from django.urls import include, path
 from api.views import (CustomUserViewSet, FavoriteViewSet, IngredientViewSet,
                        RecipeViewSet, ShoppingCartViewSet,
                        SubscriptionsViewSet, TagViewSet, sign_up)
