@@ -1,10 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-
 from foodgram.settings import EMPTY_VALUE_DISPLAY
 
-from .forms import CustomUserCreationForm, CustomUserChangeForm
-from .models import User, Subscriptions
+from .forms import CustomUserChangeForm, CustomUserCreationForm
+from .models import Subscriptions, User
 
 
 @admin.register(User)

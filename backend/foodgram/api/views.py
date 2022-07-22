@@ -1,45 +1,28 @@
-from django.shortcuts import get_object_or_404
-from django.http import FileResponse
 from django.contrib.auth.hashers import make_password
-
-from reportlab.pdfgen import canvas
-
-from djoser.views import UserViewSet
-
-from rest_framework import status, viewsets, filters
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import (IsAuthenticated,
-                                        AllowAny)
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-
-from recipes.models import (Ingredient,
-                            Tag,
-                            Recipe,
-                            IngredientRecipe,
-                            Favorite,
-                            ShoppingCart)
-from users.models import User, Subscriptions
-
-from .serializers import (CustomUserSerializer,
-                          SignUpSerializer,
-                          AccountSerializer,
-                          SubscriptionsSerializer,
-                          IngredientSerializer,
-                          TagSerializer,
-                          RecipeListRetrieveSerializer,
-                          RecipeManipulationSerializer,
-                          FavoriteSerializer,
-                          ShoppingCartSerializer)
-from .mixins import (ListRetrieveViewSet,
-                     ListCreateDestroyViewSet,
-                     CreateDestroyViewSet,)
-from .permissions import (IsAdmin,
-                          IsAuthorOnly,
-                          IsAuthorOrReadOnly,)
-from .pagination import FoodGramPagination
+from djoser.views import UserViewSet
+from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
+                            ShoppingCart, Tag)
+from reportlab.pdfgen import canvas
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from users.models import Subscriptions, User
 
 from .filters import RecipeFilter
+from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
+                     ListRetrieveViewSet)
+from .pagination import FoodGramPagination
+from .permissions import IsAdmin, IsAuthorOnly, IsAuthorOrReadOnly
+from .serializers import (AccountSerializer, CustomUserSerializer,
+                          FavoriteSerializer, IngredientSerializer,
+                          RecipeListRetrieveSerializer,
+                          RecipeManipulationSerializer, ShoppingCartSerializer,
+                          SignUpSerializer, SubscriptionsSerializer,
+                          TagSerializer)
 
 
 class CustomUserViewSet(UserViewSet):

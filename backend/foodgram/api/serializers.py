@@ -1,18 +1,13 @@
-from django.shortcuts import get_object_or_404
-from drf_extra_fields.fields import Base64ImageField
-from djoser.serializers import (UserCreateSerializer,
-                                UserSerializer,)
 from typing import Dict
-from rest_framework import serializers, validators, exceptions, status
 
-from foodgram.settings import MINIMUM, FALSE_RESULT
-from recipes.models import (Ingredient,
-                            Tag,
-                            Recipe,
-                            IngredientRecipe,
-                            Favorite,
-                            ShoppingCart)
-from users.models import User, Subscriptions
+from django.shortcuts import get_object_or_404
+from djoser.serializers import UserCreateSerializer, UserSerializer
+from drf_extra_fields.fields import Base64ImageField
+from foodgram.settings import FALSE_RESULT, MINIMUM
+from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
+                            ShoppingCart, Tag)
+from rest_framework import exceptions, serializers, status, validators
+from users.models import Subscriptions, User
 
 from .validators import password_verification
 
