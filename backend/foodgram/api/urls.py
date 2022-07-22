@@ -1,11 +1,11 @@
 from django.urls import include, path
 from rest_framework import routers
+
 from api.views import (CustomUserViewSet, FavoriteViewSet, IngredientViewSet,
                        RecipeViewSet, ShoppingCartViewSet,
                        SubscriptionsViewSet, TagViewSet, sign_up)
 
 router = routers.DefaultRouter()
-
 router.register(r'users/me', CustomUserViewSet, basename='current_user')
 router.register(r'users/(?P<user_id>\d+)/subscribe/',
                 SubscriptionsViewSet,
