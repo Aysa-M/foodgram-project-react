@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from foodgram.settings import EMPTY_VALUE_DISPLAY
 
 from .forms import CustomUserChangeForm, CustomUserCreationForm
-from .models import Subscriptions, User
+from .models import Subscription, User
 
 
 @admin.register(User)
@@ -36,8 +36,8 @@ class CustomUserAdmin(UserAdmin):
     empty_value_display = EMPTY_VALUE_DISPLAY
 
 
-@admin.register(Subscriptions)
-class SubscriptionsAdmin(admin.ModelAdmin):
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
     list_display = ('pk', 'user', 'author',)
     list_editable = ('author',)
     list_filter = ('user', 'author',)

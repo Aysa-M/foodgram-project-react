@@ -1,16 +1,19 @@
+from django.db.models import Sum
 from django.contrib.auth.hashers import make_password
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.views import UserViewSet
-from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
-                            ShoppingCart, Tag)
 from reportlab.pdfgen import canvas
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from users.models import Subscriptions, User
+
+from users.models import Subscription, User
+
+from recipes.models import (Favorite, Ingredient, IngredientRecipe,
+                            Recipe, ShoppingCart, Tag)
 
 from .filters import RecipeFilter
 from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
@@ -21,7 +24,7 @@ from .serializers import (AccountSerializer, CustomUserSerializer,
                           FavoriteSerializer, IngredientSerializer,
                           RecipeListRetrieveSerializer,
                           RecipeManipulationSerializer, ShoppingCartSerializer,
-                          SignUpSerializer, SubscriptionsSerializer,
+                          SignUpSerializer, SubscriptionSerializer,
                           TagSerializer)
 
 
@@ -45,7 +48,7 @@ class CustomUserViewSet(UserViewSet):
         permission_classes=(IsAuthenticated,)
     )
     def me(self, request):
-        user = get_object_or_404(User, pk=request.user.id)
+        user = request.user
         serializer = self.get_serializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -67,7 +70,7 @@ def sign_up(request) -> User:
     first_name = serializer.validated_data['first_name']
     last_name = serializer.validated_data['last_name']
     password = make_password(serializer.validated_data['password'])
-    user, created = User.objects.get_or_create(
+    user, _ = User.objects.get_or_create(
         first_name=first_name,
         last_name=last_name,
         username=username,
@@ -77,34 +80,34 @@ def sign_up(request) -> User:
     return Response(user, status=status.HTTP_201_CREATED)
 
 
-class SubscriptionsViewSet(ListCreateDestroyViewSet):
+class SubscriptionViewSet(ListCreateDestroyViewSet):
     """
     Handler function for the processing GET, POST, DEL requests for
     subscriptions.
     """
-    queryset = Subscriptions.objects.all()
-    serializer_class = SubscriptionsSerializer
+    queryset = Subscription.objects.all()
+    serializer_class = SubscriptionSerializer
     permission_classes = (IsAdmin, IsAuthorOnly,)
     pagination_class = FoodGramPagination
 
-    def get_queryset(self) -> Subscriptions:
+    def get_queryset(self) -> Subscription:
         """
         Get a list of request user subscriptions.
         """
-        return get_object_or_404(Subscriptions, user=self.request.user)
+        return Subscription.objects.filter(user=self.request.user).all()
 
-    def perform_create(self, serializer) -> Subscriptions:
+    def perform_create(self, serializer) -> Subscription:
         """
         Create new subscription for the request user.
         """
         serializer.save(user=self.request.user)
 
-    def create(self, request, *args, **kwargs) -> Subscriptions:
+    def create(self, request, *args, **kwargs) -> Subscription:
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         self.perform_create(serializer)
-        serializer = SubscriptionsSerializer(
+        serializer = SubscriptionSerializer(
             instance=serializer.instance,
             context={'request': self.request}
         )
@@ -118,20 +121,14 @@ class SubscriptionsViewSet(ListCreateDestroyViewSet):
         Delete a chosen subscription from the request user subscriptions list.
         """
         author_id = get_object_or_404(User, id=self.kwargs.get('author_id'))
-        subscription = Subscriptions.objects.filter(user=request.user,
-                                                    author=author_id)
+        subscription = Subscription.objects.filter(user=request.user,
+                                                   author=author_id).exists()
         if subscription:
             subscription.delete()
             return Response('Вы отписались от автора.',
                             status=status.HTTP_204_NO_CONTENT)
         return Response('Вы не подписаны на пользователя',
                         status=status.HTTP_400_BAD_REQUEST)
-
-    def perform_destroy(self, instance) -> None:
-        """
-        Delete a chosen subscription from the request user subscriptions list.
-        """
-        return instance.delete()
 
 
 class IngredientViewSet(ListRetrieveViewSet):
@@ -143,7 +140,7 @@ class IngredientViewSet(ListRetrieveViewSet):
     serializer_class = IngredientSerializer
     permission_classes = (AllowAny,)
     pagination_class = None
-    filter_backends = (DjangoFilterBackend, filters.SearchFilter, )
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
     search_fields = ('$name', )
 
 
@@ -180,42 +177,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer) -> Recipe:
         serializer.save(author=self.request.user)
 
-    def create(self, request, *args, **kwargs) -> Recipe:
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-        self.perform_create(serializer)
-        serializer = RecipeManipulationSerializer(
-            instance=serializer.instance,
-            context={'request': self.request}
-        )
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data,
-                        status=status.HTTP_201_CREATED,
-                        headers=headers)
-
-    def perform_update(self, serializer) -> Recipe:
-        return super().perform_update(serializer)
-
-    def update(self, request, *args, **kwargs) -> Recipe:
-        serializer = self.get_serializer(data=request.data)
-        partial = kwargs.pop('partial')
-        instance = self.get_object()
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-        self.perform_update(instance, data=request.data, partial=partial)
-        serializer = RecipeManipulationSerializer(
-            instance=serializer.instance,
-            context={'request': self.request}
-        )
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data,
-                        status=status.HTTP_200_OK,
-                        headers=headers)
-
-    def perform_destroy(self, instance) -> None:
-        return super().perform_destroy(instance)
-
 
 class FavoriteViewSet(CreateDestroyViewSet):
     """
@@ -232,27 +193,13 @@ class FavoriteViewSet(CreateDestroyViewSet):
         """
         serializer.save(user=self.request.user)
 
-    def create(self, request, *args, **kwargs) -> Favorite:
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-        self.perform_create(serializer)
-        serializer = FavoriteSerializer(
-            instance=serializer.instance,
-            context={'request': self.request}
-        )
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data,
-                        status=status.HTTP_201_CREATED,
-                        headers=headers)
-
     def delete(self, request, *args, **kwargs) -> None:
         """
         Delete a chosen recipe from the request user favorite list.
         """
         recipe_id = get_object_or_404(Recipe, id=self.kwargs.get('recipe_id'))
         favorite = Favorite.objects.filter(user=request.user,
-                                           recipe=recipe_id)
+                                           recipe=recipe_id).exists()
         if favorite:
             favorite.delete()
             return Response(
@@ -262,12 +209,6 @@ class FavoriteViewSet(CreateDestroyViewSet):
             {'error': 'В Избранном такого рецепта нет.'},
             status=status.HTTP_400_BAD_REQUEST
         )
-
-    def perform_destroy(self, instance) -> None:
-        """
-        Delete a chosen recipe from the request user favorite list.
-        """
-        return instance.delete()
 
 
 class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
@@ -289,16 +230,19 @@ class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
         """
         buffer = {}
         ingredients = IngredientRecipe.objects.filter(
-            recipe__user_cart__user=request.user).prefetch_related(Ingredient)
+            recipe__user_cart__user=request.user).values(
+                'ingredient__name', 'ingredient__measurement_unit', 'amount'
+        ).annotate(amount=Sum('amount'))
         for field in ingredients:
             name = field[0]
             if name not in buffer:
                 buffer[name] = {
-                    'measurement_unit': field[1],
-                    'amount': field[2]
+                    'name': field[1],
+                    'measurement_unit': field[2],
+                    'amount': field[3]
                 }
             else:
-                buffer[name]['amount'] += field[2]
+                buffer[name]['amount'] += field[3]
         shopping_list = canvas.Canvas(buffer)
         shopping_list.drawString(100, 100, 'Список покупок')
         shopping_list.showPage()
@@ -326,7 +270,7 @@ class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
         """
         recipe_id = get_object_or_404(Recipe, id=self.kwargs.get('recipe_id'))
         shopping_cart = ShoppingCart.objects.filter(user=request.user,
-                                                    recipe=recipe_id)
+                                                    recipe=recipe_id).exists()
         if shopping_cart:
             shopping_cart.delete()
             return Response(

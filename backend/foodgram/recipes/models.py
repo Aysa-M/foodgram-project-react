@@ -10,32 +10,24 @@ USER = settings.AUTH_USER_MODEL
 
 class Ingredient(models.Model):
     """
-    Class's used for creation of ingredients for recipes.
+    Class' used for creation of ingredients for recipes.
     """
     name = models.CharField(
-        verbose_name='Название ингридиента',
-        max_length=200,
-        blank=False
+        verbose_name='Название ингредиента',
+        max_length=200
     )
     measurement_unit = models.CharField(
         verbose_name='Единица измерения',
-        max_length=200,
-        blank=False
+        max_length=200
     )
 
     class Meta:
-        """
-        Service class for metadata of the Ingredients model.
-        """
         ordering = ['name']
-        verbose_name = 'Ингридиент'
-        verbose_name_plural = 'Ингридиенты'
+        verbose_name = 'Ингредиент'
+        verbose_name_plural = 'Ингредиенты'
 
     def __str__(self) -> str:
-        """
-        Output the information about the ingredient's measurement.
-        """
-        return f'{self.name}, {self.measurement_unit}'
+        return f'{self.pk}. {self.name}, {self.measurement_unit}'
 
 
 class Tag(models.Model):
@@ -54,7 +46,6 @@ class Tag(models.Model):
         default='#337f37',
         max_length=7,
         unique=True,
-        blank=False
     )
     slug = models.SlugField(
         verbose_name='slug тега',
@@ -68,9 +59,6 @@ class Tag(models.Model):
     )
 
     class Meta:
-        """
-        Service class for metadata of the Tags model.
-        """
         ordering = ['id', ]
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
@@ -86,9 +74,6 @@ class Tag(models.Model):
         ]
 
     def __str__(self) -> str:
-        """
-        Output the information about the tag.
-        """
         return f'{self.name}'
 
 
@@ -108,20 +93,17 @@ class Recipe(models.Model):
     name = models.CharField(
         verbose_name='Название рецепта',
         max_length=200,
-        blank=False,
         validators=[validate_not_empty]
     )
     image = models.ImageField(
         'Изображение',
-        upload_to='recipes/',
-        blank=False
+        upload_to='recipes/'
     )
     text = models.TextField(
         verbose_name='Описание рецепта',
         help_text='Добавьте сюда ваш рецепт',
         max_length=10000,
-        validators=[validate_not_empty],
-        blank=False
+        validators=[validate_not_empty]
     )
     ingredients = models.ManyToManyField(
         Ingredient,
@@ -132,12 +114,10 @@ class Recipe(models.Model):
     tags = models.ManyToManyField(
         Tag,
         related_name='recipes',
-        verbose_name='Теги',
-        blank=False
+        verbose_name='Теги'
     )
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления в минутах.',
-        blank=False,
         null=False,
         validators=[MinValueValidator(
             1, message='Минимальное время приготовления = 1 минута.')]
@@ -149,17 +129,11 @@ class Recipe(models.Model):
     )
 
     class Meta:
-        """
-        Service class for metadata of the Recipe model.
-        """
         ordering = ['-pub_date', ]
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
 
     def __str__(self) -> str:
-        """
-        Output the full description of the recipe.
-        """
         return self.text
 
     def get_absoulute_url(self):
@@ -182,19 +156,15 @@ class IngredientRecipe(models.Model):
                                null=True,
                                related_name='igredients_recipes')
     amount = models.PositiveSmallIntegerField(
-        verbose_name='Количество ингридиента для рецепта',
-        blank=False,
+        verbose_name='Количество ингредиента для рецепта',
         null=False,
         validators=[MinValueValidator(
             1, message='Минимальное количество должно быть не меньше 1.')]
     )
 
     class Meta:
-        """
-        Service class for metadata of IngredientRecipe model.
-        """
-        verbose_name = 'Количество ингридиента для рецепта'
-        verbose_name_plural = 'Количество ингридиента для рецептов'
+        verbose_name = 'Количество ингредиента для рецепта'
+        verbose_name_plural = 'Количество ингредиента для рецептов'
         db_table = 'ingredient_recipe'
         constraints = [
             models.UniqueConstraint(
@@ -207,9 +177,6 @@ class IngredientRecipe(models.Model):
         ]
 
     def __str__(self) -> str:
-        """
-        Output the full description of the ingredient for recipe.
-        """
         return (f'{self.ingredients} - {self.amount}')
 
 
@@ -221,21 +188,16 @@ class Favorite(models.Model):
         USER,
         on_delete=models.CASCADE,
         related_name='user_favorite',
-        verbose_name='Пользователь',
-        blank=False
+        verbose_name='Пользователь'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name='favorites',
-        verbose_name='Рецепт',
-        blank=False
+        verbose_name='Рецепт'
     )
 
     class Meta:
-        """
-        Service class for metadata of Favorite model.
-        """
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранные'
         db_table = 'favorites'
@@ -258,21 +220,16 @@ class ShoppingCart(models.Model):
         USER,
         on_delete=models.CASCADE,
         related_name='user_cart',
-        verbose_name='Пользователь',
-        blank=False
+        verbose_name='Пользователь'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
         related_name='cart',
-        verbose_name='Рецепт',
-        blank=False
+        verbose_name='Рецепт'
     )
 
     class Meta:
-        """
-        Service class for metadata of ShoppingCart model.
-        """
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Список покупок'
         db_table = 'cart'

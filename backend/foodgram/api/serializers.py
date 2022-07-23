@@ -1,13 +1,17 @@
 from typing import Dict
 
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
 from foodgram.settings import FALSE_RESULT, MINIMUM
-from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
-                            ShoppingCart, Tag)
+
 from rest_framework import exceptions, serializers, status, validators
-from users.models import Subscriptions, User
+
+from users.models import Subscription, User
+
+from recipes.models import (Favorite, Ingredient, IngredientRecipe,
+                            Recipe, ShoppingCart, Tag)
 
 from .validators import password_verification
 
@@ -21,20 +25,6 @@ class CustomUserSerializer(UserSerializer):
     """
     is_subscribed = serializers.SerializerMethodField(
         method_name='get_is_subscribed')
-
-    def get_is_subscribed(self, obj: User) -> bool:
-        """Checks if a current user had subscrubed to the author's account"""
-        user = self.context.get('request').user
-        if self.context.get('request').path_info == '/api/users/me/':
-            return False
-        if user.role == (user.is_user or user.is_admin):
-            return Subscriptions.objects.filter(user=user, author=obj).exists()
-        if user.is_anon:
-            raise serializers.ValidationError(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_400_BAD_REQUEST
-            )
-        return False
 
     class Meta:
         model = User
@@ -60,20 +50,20 @@ class CustomUserSerializer(UserSerializer):
             )
         ]
 
+    def get_is_subscribed(self, obj: User) -> bool:
+        """Checks if a current user had subscrubed to the author's account"""
+        user = self.context.get('request').user
+        url = reverse('api:current_user-me', args=[user.pk])
+        if self.context.get('request').path_info == url:
+            return False
+        if user.role == (user.is_user or user.is_admin):
+            return Subscription.objects.filter(user=user, author=obj).exists()
+        return False
+
     def validate_user(self, value: DICT_TYPES) -> None:
         """Uniqueness' validation for username and email fields."""
         user = self.context.get('request').user
-        if user.is_anon:
-            raise exceptions.NotAuthenticated(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_401_UNAUTHORIZED
-            )
-        elif user.role != (user.is_user or user.is_admin):
-            raise exceptions.AuthenticationFailed(
-                detail='Введены неверные учетные данные.',
-                code=status.HTTP_401_UNAUTHORIZED
-            )
-        elif not user.id:
+        if not user.id:
             raise exceptions.NotFound(
                 detail='Страница не найдена.',
                 code=status.HTTP_404_NOT_FOUND
@@ -106,7 +96,7 @@ class SignUpSerializer(UserCreateSerializer):
 
     def validate_username(self, username: str) -> bool:
         """Validation of user's username"""
-        if username == 'me':
+        if username in ('me', 'Me', 'ME', 'mE', 'mE'):
             raise serializers.ValidationError('Недопустимое имя')
         return username
 
@@ -145,12 +135,26 @@ class PartialRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time',)
 
 
-class SubscriptionsSerializer(CustomUserSerializer):
+class SubscriptionSerializer(CustomUserSerializer):
     """
     Serializer / deserializer to get the list of subscriptions
     of the GET request user.
     """
-    recipes = serializers.SerializerMethodField()
+    recipes = serializers.SerializerMethodField(method_name='get_recipes')
+    recipes_count = serializers.SerializerMethodField(
+        method_name='get_recipes_count'
+    )
+
+    class Meta:
+        model = User
+        fields = ('email',
+                  'id',
+                  'username',
+                  'first_name',
+                  'last_name',
+                  'is_subscribed',
+                  'recipes',
+                  'recipes_count',)
 
     def get_recipes(self, obj: User) -> Recipe:
         """
@@ -162,8 +166,6 @@ class SubscriptionsSerializer(CustomUserSerializer):
         if limit:
             recipes = recipes[:int(limit)]
         return PartialRecipeSerializer(recipes, many=True).data
-
-    recipes_count = serializers.SerializerMethodField()
 
     def get_recipes_count(self, obj: User) -> int:
         """
@@ -178,17 +180,6 @@ class SubscriptionsSerializer(CustomUserSerializer):
                 code=status.HTTP_401_UNAUTHORIZED
             )
 
-    class Meta:
-        model = User
-        fields = ('email',
-                  'id',
-                  'username',
-                  'first_name',
-                  'last_name',
-                  'is_subscribed',
-                  'recipes',
-                  'recipes_count',)
-
     def validate(self, data) -> bool:
         """
         Checks user's subscription.
@@ -196,7 +187,7 @@ class SubscriptionsSerializer(CustomUserSerializer):
         sub_id = data.get('id')
         user_id = data.get('user_id')
         author_id = data.get('author_id')
-        subscription = get_object_or_404(Subscriptions,
+        subscription = get_object_or_404(Subscription,
                                          id=sub_id,
                                          user=user_id,
                                          author=author_id)
@@ -209,11 +200,6 @@ class SubscriptionsSerializer(CustomUserSerializer):
             raise serializers.ValidationError(
                 detail='Вы не можете подписаться на самого себя.',
                 code=status.HTTP_400_BAD_REQUEST
-            )
-        if user_id.is_anon:
-            raise exceptions.NotAuthenticated(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_401_UNAUTHORIZED
             )
         return data
 
@@ -235,13 +221,12 @@ class IngredientRecipeSerializer(serializers.ModelSerializer):
     id = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Ingredient.objects.all()
     )
-    name = serializers.SerializerMethodField()
-
-    def get_name(self, obj):
-        return obj.name
+    name = serializers.ReadOnlyField(
+        source='ingredient_for_recipe.name'
+    )
 
     measurement_unit = serializers.ReadOnlyField(
-        source='ingredient.measurement_unit'
+        source='ingredient_for_recipe.measurement_unit'
     )
     amount = serializers.IntegerField()
 
@@ -255,10 +240,9 @@ class IngredientCUDRecipeSerializer(serializers.ModelSerializer):
     Serializer / deserializer for CUD (create, update and delete) operations
     with recipes.
     """
-    id = serializers.SerializerMethodField()
-
-    def get_id(self, obj):
-        return obj.ingredient.id
+    id = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Ingredient.objects.all()
+    )
 
     class Meta:
         model = IngredientRecipe
@@ -298,43 +282,12 @@ class RecipeListRetrieveSerializer(serializers.ModelSerializer):
     author = CustomUserSerializer()
     ingredients = IngredientRecipeSerializer(many=True,
                                              source='igredients_recipes')
-    is_favorited = serializers.SerializerMethodField()
-
-    def get_is_favorited(self, obj: User) -> bool:
-        """
-        Method for serializer field checking if the recipe is
-        in personal favorite list of a request user.
-        """
-        if self.context.get('request').method == 'POST':
-            return False
-        user = self.context.get('request').user
-        if user.is_authenticated:
-            return Favorite.objects.filter(user=obj)
-        elif user.is_anon:
-            raise exceptions.NotAuthenticated(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_401_UNAUTHORIZED
-            )
-        return False
-
-    is_in_shopping_cart = serializers.SerializerMethodField()
-
-    def get_is_in_shopping_cart(self, obj: User) -> bool:
-        """
-        Method for serializer field checking if the recipe is
-        in shopping cart of a request user.
-        """
-        if self.context.get('request').method == 'POST':
-            return False
-        user = self.context.get('request').user
-        if user.is_authenticated:
-            return ShoppingCart.objects.filter(user=obj)
-        elif user.is_anon:
-            raise exceptions.NotAuthenticated(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_401_UNAUTHORIZED
-            )
-        return False
+    is_favorited = serializers.SerializerMethodField(
+        method_name='get_is_favorited'
+    )
+    is_in_shopping_cart = serializers.SerializerMethodField(
+        method_name='get_is_in_shopping_cart'
+    )
 
     class Meta:
         model = Recipe
@@ -348,6 +301,35 @@ class RecipeListRetrieveSerializer(serializers.ModelSerializer):
                   'image',
                   'text',
                   'cooking_time',)
+
+    def get_is_favorited(self, obj: User) -> bool:
+        """
+        Method for serializer field checking if the recipe is
+        in personal favorite list of a request user.
+        """
+        if self.context.get('request').method == 'POST':
+            return False
+        user = self.context.get('request').user
+        recipe = self.context.get('recipe_id')
+        if user.is_authenticated:
+            return Favorite.objects.filter(user=obj, recipe=recipe).exists()
+        return False
+
+    def get_is_in_shopping_cart(self, obj: User) -> bool:
+        """
+        Method for serializer field checking if the recipe is
+        in shopping cart of a request user.
+        """
+        if self.context.get('request').method == 'POST':
+            return False
+        user = self.context.get('request').user
+        recipe = self.context.get('recipe_id')
+        if user.is_authenticated:
+            return ShoppingCart.objects.filter(
+                user=obj,
+                recipe=recipe
+            ).exists()
+        return False
 
 
 class RecipeManipulationSerializer(serializers.ModelSerializer):
@@ -370,35 +352,12 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
                   'cooking_time',)
 
     def validate(self, data: DICT_TYPES) -> None:
-        """Uniqueness' validation for username and email fields."""
-        ingredients = data.get('ingredients')
+        """Validation data for recipe fields."""
         tags = data.get('tags')
         image = data.get('image')
         name = data.get('name')
         text = data.get('text')
         cooking_time = data.get('cooking_time')
-        if Recipe.objects.filter(author=self.context.get('request').user,
-                                 name=name,
-                                 text=text).exists():
-            raise serializers.ValidationError(
-                detail=('Вы уже создавали такой рецепт.'),
-                code=status.HTTP_400_BAD_REQUEST
-            )
-        if not ingredients or len(ingredients) == FALSE_RESULT:
-            raise serializers.ValidationError(
-                detail=('Укажите название и количество '
-                        'ингредиентов в рецепте.'),
-                code=status.HTTP_400_BAD_REQUEST
-            )
-        ingredients_id = []
-        for ingredient in ingredients:
-            if ingredient.get('amount') < MINIMUM:
-                raise serializers.ValidationError(
-                    detail=('Укажите необходимое количество '
-                            f'ингредиента {ingredient.id}.'),
-                    code=status.HTTP_400_BAD_REQUEST
-                )
-            ingredients_id.append(ingredient)
         if not tags:
             raise serializers.ValidationError(
                 detail='Необходимо выбрать теги',
@@ -426,15 +385,48 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
             )
         return data
 
+    def validate_ingredients(self, data: DICT_TYPES) -> None:
+        """Validation ingredients data."""
+        ingredients = data.get('ingredients')
+        if not ingredients or len(ingredients) == FALSE_RESULT:
+            raise serializers.ValidationError(
+                detail=('Укажите название и количество '
+                        'ингредиентов в рецепте.'),
+                code=status.HTTP_400_BAD_REQUEST
+            )
+        ingredients_id = []
+        for item in ingredients:
+            ingredient = get_object_or_404(
+                Ingredient,
+                id=item['id']
+            )
+            if item.get('amount') < MINIMUM:
+                raise serializers.ValidationError(
+                    detail=('Укажите необходимое количество '
+                            f'ингредиента {ingredient}.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+            if ingredient in ingredients_id:
+                raise serializers.ValidationError(
+                    detail=(f'Ингредиент {ingredient.id} уже '
+                            'использован в рецепте.'),
+                    code=status.HTTP_400_BAD_REQUEST
+                )
+            ingredients_id.append(ingredient)
+        return data
+
     def create_ingredients(self, ingredients, recipe) -> IngredientRecipe:
         """
         Creates a model linking a current ingredient with recipe.
         """
+        bulk_list = []
         for ingredient in ingredients:
-            IngredientRecipe.objects.create(
+            bulk_list.append(IngredientRecipe(
                 recipe=recipe,
                 ingredients=ingredient.get('name'),
-                amount=ingredient.get('amount'), )
+                amount=ingredient.get('amount')
+            ))
+        return IngredientRecipe.objects.bulk_create(bulk_list)
 
     def create(self, validated_data) -> Recipe:
         """
@@ -461,6 +453,11 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
         return super().update(
             instance, validated_data)
 
+    def to_representation(self, instance):
+        return RecipeListRetrieveSerializer(
+            instance,
+            context={'request': self.context.get('request')}).data
+
 
 class FavoriteSerializer(serializers.ModelSerializer):
     """Serializer / deserializer for model Favorite."""
@@ -482,11 +479,6 @@ class FavoriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 detail=(f'{recipe_req} уже есть в вашем списке.'),
                 code=status.HTTP_400_BAD_REQUEST
-            )
-        if request.user.is_anon:
-            raise exceptions.NotAuthenticated(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_401_UNAUTHORIZED
             )
         return data
 
@@ -517,11 +509,6 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 detail=(f'{recipe_req} уже есть в списке покупок.'),
                 code=status.HTTP_400_BAD_REQUEST
-            )
-        if request.user.is_anon:
-            raise exceptions.NotAuthenticated(
-                detail='Учетные данные не были предоставлены.',
-                code=status.HTTP_401_UNAUTHORIZED
             )
         return data
 

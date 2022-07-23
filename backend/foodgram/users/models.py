@@ -1,23 +1,17 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import CharField, EmailField
-from django.forms import IntegerField
 
 
 class User(AbstractUser):
     """
-    Переопределенная модель User.
+    User custom model.
     """
-    ANON = 'anon'
     USER = 'user'
     ADMIN = 'admin'
     ROLE_CHOICES = (
-        (ANON, ANON),
         (USER, USER),
         (ADMIN, ADMIN),
-    )
-    id = IntegerField(
-        min_value=1
     )
     username = CharField(
         verbose_name='Логин',
@@ -35,7 +29,6 @@ class User(AbstractUser):
     email = EmailField(
         verbose_name='Адрес электронной почты email',
         unique=True,
-        blank=False,
         max_length=254,
         error_messages={
             'unique': 'Указанный email уже зарегистрирован.',
@@ -60,22 +53,16 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     @property
-    def is_anon(self):
-        """Anonymous users."""
-        return self.role == self.ANON
-
-    @property
     def is_user(self):
         """Authenticated users."""
         return self.role == self.USER
 
     @property
     def is_admin(self):
-        """Administartor."""
+        """Administrator user."""
         return self.role == self.ADMIN or self.is_superuser
 
     class Meta:
-        """Service information for the class."""
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
         db_table = 'pair'
@@ -87,13 +74,12 @@ class User(AbstractUser):
         ]
 
     def __str__(self) -> str:
-        """Output username."""
         return self.username
 
 
-class Subscriptions(models.Model):
+class Subscription(models.Model):
     """
-    Creates subscribes.
+    Creates a subscription.
     """
     user = models.ForeignKey(
         User,
@@ -112,9 +98,6 @@ class Subscriptions(models.Model):
     )
 
     class Meta:
-        """
-        Service class for metadata of Subscriptions model.
-        """
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
         db_table = 'subscription'
@@ -129,7 +112,4 @@ class Subscriptions(models.Model):
         ]
 
     def __str__(self) -> str:
-        """
-        Output the full username of the following.
-        """
         return f'{self.user} оформил подписку на {self.author}'
