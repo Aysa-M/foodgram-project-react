@@ -2,7 +2,6 @@ from typing import Dict
 
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-
 from rest_framework import exceptions, serializers, status, validators
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
@@ -11,10 +10,7 @@ from foodgram.settings import FALSE_RESULT, MINIMUM
 from users.models import Subscription, User
 from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
                             ShoppingCart, Tag)
-
 from .validators import password_verification
-
-# Пропустил через flake8 и isort. Согласно документации PEP8 поправила.
 
 DICT_TYPES = Dict[int, str]
 

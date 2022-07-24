@@ -2,7 +2,6 @@ from django.contrib.auth.hashers import make_password
 from django.db.models import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
-
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -14,7 +13,6 @@ from reportlab.pdfgen import canvas
 from users.models import Subscription, User
 from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
                             ShoppingCart, Tag)
-
 from .filters import RecipeFilter
 from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
                      ListRetrieveViewSet)
