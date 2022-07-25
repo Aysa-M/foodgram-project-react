@@ -17,10 +17,12 @@ from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
                      ListRetrieveViewSet)
 from .pagination import FoodGramPagination
 from .permissions import IsAdmin, IsAuthorOnly, IsAuthorOrReadOnly
-from .serializers import (CustomUserSerializer, AccountSerializer, FavoriteSerializer,
-                          IngredientSerializer, RecipeListRetrieveSerializer,
-                          RecipeManipulationSerializer, ShoppingCartSerializer,
-                          SubscriptionSerializer, TagSerializer)
+from .serializers import (CustomUserSerializer, AccountSerializer,
+                          FavoriteSerializer, IngredientSerializer,
+                          RecipeListRetrieveSerializer,
+                          RecipeManipulationSerializer,
+                          ShoppingCartSerializer, SubscriptionSerializer,
+                          TagSerializer)
 
 
 class CustomUserViewSet(UserViewSet):
