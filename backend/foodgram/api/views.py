@@ -1,9 +1,8 @@
-from django.contrib.auth.hashers import make_password
 from django.db.models import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet
@@ -18,12 +17,10 @@ from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
                      ListRetrieveViewSet)
 from .pagination import FoodGramPagination
 from .permissions import IsAdmin, IsAuthorOnly, IsAuthorOrReadOnly
-from .serializers import (AccountSerializer, CustomUserSerializer,
-                          FavoriteSerializer, IngredientSerializer,
-                          RecipeListRetrieveSerializer,
+from .serializers import (CustomUserSerializer, AccountSerializer, FavoriteSerializer,
+                          IngredientSerializer, RecipeListRetrieveSerializer,
                           RecipeManipulationSerializer, ShoppingCartSerializer,
-                          SignUpSerializer, SubscriptionSerializer,
-                          TagSerializer)
+                          SubscriptionSerializer, TagSerializer)
 
 
 class CustomUserViewSet(UserViewSet):
@@ -36,12 +33,12 @@ class CustomUserViewSet(UserViewSet):
     permission_classes = (AllowAny,)
     lookup_field = 'id'
     pagination_class = FoodGramPagination
-    http_method_names = ['get']
+    http_method_names = ['get', 'head', 'post']
 
     @action(
         methods=('GET', 'PATCH',),
         detail=False,
-        url_path='me/',
+        url_path='me',
         serializer_class=AccountSerializer,
         permission_classes=(IsAuthenticated,)
     )
@@ -53,29 +50,6 @@ class CustomUserViewSet(UserViewSet):
         return Response(
             serializer.data,
             status=status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes((AllowAny,))
-def sign_up(request) -> User:
-    """
-    Handler function for registration new accounts for users.
-    """
-    serializer = SignUpSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    email = serializer.validated_data['email']
-    username = serializer.validated_data['username']
-    first_name = serializer.validated_data['first_name']
-    last_name = serializer.validated_data['last_name']
-    password = make_password(serializer.validated_data['password'])
-    user, _ = User.objects.get_or_create(
-        first_name=first_name,
-        last_name=last_name,
-        username=username,
-        email=email,
-        password=password,
-    )
-    return Response(user, status=status.HTTP_201_CREATED)
 
 
 class SubscriptionViewSet(ListCreateDestroyViewSet):

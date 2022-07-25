@@ -3,10 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (CustomUserViewSet, FavoriteViewSet, IngredientViewSet,
                     RecipeViewSet, ShoppingCartViewSet, SubscriptionViewSet,
-                    TagViewSet, sign_up)
+                    TagViewSet)
 
 router = DefaultRouter()
-router.register(r'users/me', CustomUserViewSet, basename='current_user')
+router.register(r'users', CustomUserViewSet, basename='users_list')
 router.register(r'users/(?P<user_id>\d+)/subscribe/',
                 SubscriptionViewSet,
                 basename='user_subscriptions'),
@@ -26,7 +26,6 @@ router.register(r'recipes/(?P<recipe_id>\d+)/favorite',
 
 app_name = 'api'
 urlpatterns = [
-    path('users/', sign_up, name='signup'),
     path('', include(router.urls)),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),

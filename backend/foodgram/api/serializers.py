@@ -50,7 +50,7 @@ class CustomUserSerializer(UserSerializer):
     def get_is_subscribed(self, obj: User) -> bool:
         """Checks if a current user had subscrubed to the author's account"""
         user = self.context.get('request').user
-        url = reverse('api:current_user-me', args=[user.pk])
+        url = reverse('api:users_list-me', args=[user.pk])
         if self.context.get('request').path_info == url:
             return False
         if user.is_authenticated:
@@ -114,6 +114,19 @@ class SignUpSerializer(UserCreateSerializer):
                         'email повторно.'),
                 code=status.HTTP_400_BAD_REQUEST)
         return data
+
+    def create(self, validated_data) -> User:
+        """
+        Registration new accounts for users.
+        """
+        user = User.objects.create(
+            email=validated_data['email'],
+            username=validated_data['username'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'])
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
 
 
 class AccountSerializer(CustomUserSerializer):
@@ -203,7 +216,6 @@ class SubscriptionSerializer(CustomUserSerializer):
 
 class IngredientSerializer(serializers.ModelSerializer):
     """Serializer / deserializer for model Ingredients."""
-    id = serializers.IntegerField()
 
     class Meta:
         model = Ingredient
@@ -215,15 +227,10 @@ class IngredientRecipeSerializer(serializers.ModelSerializer):
     Serializer / deserializer for counting amount of ingredient in a
     current recipe. The class links class Ingredient with class Recipe.
     """
-    id = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Ingredient.objects.all()
-    )
-    name = serializers.ReadOnlyField(
-        source='ingredient_for_recipe.name'
-    )
-
+    id = serializers.ReadOnlyField(source='ingredient.id')
+    name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.ReadOnlyField(
-        source='ingredient_for_recipe.measurement_unit'
+        source='ingredient.measurement_unit'
     )
     amount = serializers.IntegerField()
 
@@ -237,9 +244,8 @@ class IngredientCUDRecipeSerializer(serializers.ModelSerializer):
     Serializer / deserializer for CUD (create, update and delete) operations
     with recipes.
     """
-    id = serializers.PrimaryKeyRelatedField(
-        many=True, queryset=Ingredient.objects.all()
-    )
+    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+    amount = serializers.IntegerField()
 
     class Meta:
         model = IngredientRecipe
@@ -340,7 +346,8 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('author',
+        fields = ('id',
+                  'author',
                   'ingredients',
                   'tags',
                   'image',
@@ -384,7 +391,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
 
     def validate_ingredients(self, data: DICT_TYPES) -> None:
         """Validation ingredients data."""
-        ingredients = data.get('ingredients')
+        ingredients = data['ingredients']
         if not ingredients or len(ingredients) == FALSE_RESULT:
             raise serializers.ValidationError(
                 detail=('Укажите название и количество '
@@ -412,6 +419,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
             ingredients_id.append(ingredient)
         return data
 
+    @staticmethod
     def create_ingredients(self, ingredients, recipe) -> IngredientRecipe:
         """
         Creates a model linking a current ingredient with recipe.
