@@ -16,12 +16,6 @@ services:
       - db
     env_file:
       - ./.env
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    volumes:
-      - ../frontend/:/app/result_build/
   nginx:
     image: nginx:1.19.3
     ports:
@@ -34,6 +28,11 @@ services:
       - media_value:/var/html/media/
     depends_on:
       - backend
+  frontend:
+    image: nanice/foodgram_frontend:v1
+    volumes:
+      - ../frontend/:/app/result_build/
 volumes:
+  postgres_data:
   static_value:
   media_value:
