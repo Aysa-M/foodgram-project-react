@@ -31,7 +31,10 @@ services:
   frontend:
     image: nanice/foodgram_frontend:latest
     volumes:
-      - ../frontend/:/app/result_build/
+      - frontend/:/app/result_build/
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   static_value:
