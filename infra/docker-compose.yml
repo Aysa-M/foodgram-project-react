@@ -27,9 +27,9 @@ services:
       - static_value:/var/html/static/:ro
       - media_value:/var/html/media/
     depends_on:
-      - backend
+      - frontend
   frontend:
-    image: nanice/foodgram_frontend:v1
+    image: nanice/foodgram_frontend:latest
     volumes:
       - ../frontend/:/app/result_build/
 volumes:
