@@ -19,6 +19,11 @@ services:
     env_file:
       - ./.env
 
+  frontend:
+    image: nanice/foodgram_frontend:latest
+    volumes:
+      - ..frontend/:/app/result_build/
+
   nginx:
     image: nginx:1.19.3
     ports:
@@ -32,11 +37,6 @@ services:
     restart: always
     depends_on:
       - frontend
-
-  frontend:
-    image: nanice/foodgram_frontend:latest
-    volumes:
-      - ..frontend/:/app/result_build/
 
 volumes:
   postgres_data:
