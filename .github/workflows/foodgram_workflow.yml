@@ -57,6 +57,7 @@ jobs:
           message: |
             Error while building ang pushing image to DockerHub  - ${{ github.repository }}
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  
   deploy:
     name: Deploy the foodgram to the VM.
     runs-on: ubuntu-latest
@@ -95,6 +96,7 @@ jobs:
           message: |
             Error with deploy process - ${{ github.repository }}
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  
   send_message:
     runs-on: ubuntu-latest
     needs: deploy
