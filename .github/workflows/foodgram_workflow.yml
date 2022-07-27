@@ -78,7 +78,6 @@ jobs:
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgram:latest
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgram_frontend:latest
             sudo docker-compose stop
             sudo docker-compose rm -f backend
       - name :  docker-compose up 
@@ -99,7 +98,6 @@ jobs:
             echo DB_PORT=${{ secrets.DB_PORT }} >> .env 
             echo SECRET_KEY="${{ secrets.SECRET_KEY }}" >> .env 
             echo ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }} >> .env 
-            echo DEBUG=False >> .env 
             sudo docker-compose up -d
       - name: Send message if deploy failed
         if: ${{ failure() }}

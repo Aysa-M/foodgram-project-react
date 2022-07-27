@@ -1,5 +1,7 @@
 FROM python:3.7-slim
 
+RUN apt update && apt -y install libpq-dev build-essential
+
 WORKDIR /app
 
 COPY requirements.txt /app
