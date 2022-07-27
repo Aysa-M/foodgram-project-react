@@ -81,7 +81,6 @@ jobs:
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/foodgram_frontend:latest
             sudo docker-compose stop
             sudo docker-compose rm -f backend
-            sudo docker-compose rm -f frontend
       - name :  docker-compose up 
         uses :  appleboy/ssh-action@master 
         with : 
@@ -90,7 +89,6 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
           script: |
-            cd infra/ 
             rm .env
             touch .env 
             echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env 
