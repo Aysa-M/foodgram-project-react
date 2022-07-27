@@ -33,10 +33,10 @@ services:
     ports:
       - 80:80
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
       - ../frontend/build:/usr/share/nginx/html/
       - /docs/:/usr/share/nginx/html/api/docs/
-      - static_value:/var/html/static_backend/
+      - static_value:/var/html/static_backend/:ro
       - media_value:/var/html/media/
     restart: always
     depends_on:
