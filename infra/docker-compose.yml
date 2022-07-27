@@ -23,6 +23,8 @@ services:
     image: nanice/foodgram_frontend:latest
     volumes:
       - ..frontend/:/app/result_build/
+    depends_on:
+      - backend
 
   nginx:
     image: nginx:1.19.3
@@ -33,7 +35,7 @@ services:
       - static_value:/var/html/static/:ro
       - media_value:/var/html/media/
       - ../frontend/build:/usr/share/nginx/html/
-      - ../docs/:/usr/share/nginx/html/api/docs/
+      - /docs/:/usr/share/nginx/html/api/docs/
     restart: always
     depends_on:
       - frontend

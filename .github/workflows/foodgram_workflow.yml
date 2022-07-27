@@ -46,18 +46,22 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: ./foodgram/
+          context: foodgram/
           tags: ${{ secrets.DOCKER_USERNAME }}/foodgram:latest
+      - name: Push Frontend to Docker Hub
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: frontend/
+          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram_frontend:latest
       - name: Send message if build_and_push_to_docker_hub failed
         if: ${{ failure() }}
         uses: appleboy/telegram-action@master
-        with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
             Error while building ang pushing image to DockerHub  - ${{ github.repository }}
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-  
   deploy:
     name: Deploy the foodgram to the VM.
     runs-on: ubuntu-latest
@@ -99,7 +103,6 @@ jobs:
           message: |
             Error with deploy process - ${{ github.repository }}
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-  
   send_message:
     runs-on: ubuntu-latest
     needs: deploy
