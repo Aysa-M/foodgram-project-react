@@ -1,5 +1,10 @@
 version: '3.8'
 
+volumes:
+  postgres_data:
+  static:
+  media:
+
 services:
 
   db:
@@ -37,14 +42,9 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
       - ../frontend/build:/usr/share/nginx/html/
-      - ../docs/:/usr/share/nginx/html/api/docs/
-      - static_value:/var/html/static/:ro
-      - media_value:/var/html/media/:ro
+      - /docs/:/usr/share/nginx/html/api/docs/
+      - static:/app/static/:ro
+      - media:/app/media/:ro
     restart: always
     depends_on:
       - backend
-
-volumes:
-  postgres_data:
-  static_value:
-  media_value:
