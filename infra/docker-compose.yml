@@ -21,13 +21,11 @@ services:
       - ./.env
 
   frontend:
-    image: nanice/foodgram_frontend:latest
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
     volumes:
-      - frontend:/app/result_build/
-    depends_on:
-      - backend
-    env_file:
-      - ./.env
+      - ../frontend/:/app/result_build/
 
   nginx:
     image: nginx:1.21.3-alpine
@@ -35,13 +33,13 @@ services:
       - 80:80
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
-      - frontend/build:/usr/share/nginx/html/
-      - docs/:/usr/share/nginx/html/api/docs/
+      - ../frontend/build:/usr/share/nginx/html/
+      - ../docs/:/usr/share/nginx/html/api/docs/
       - static_value:/var/html/static_value/:ro
       - media_value:/var/html/media/:ro
     restart: always
     depends_on:
-      - frontend
+      - backend
 
 volumes:
   postgres_data:
