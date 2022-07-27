@@ -18,8 +18,8 @@ services:
     image: nanice/foodgram:latest
     restart: always
     volumes:
-      - static_value:/app/static/
-      - media_value:/app/media/
+      - static:/app/static/
+      - media:/app/media/
     depends_on:
       - db
     env_file:
