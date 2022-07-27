@@ -57,6 +57,7 @@ jobs:
       - name: Send message if build_and_push_to_docker_hub failed
         if: ${{ failure() }}
         uses: appleboy/telegram-action@master
+        with:
           to: ${{ secrets.TELEGRAM_TO }}
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
