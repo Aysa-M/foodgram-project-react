@@ -14,7 +14,7 @@ services:
     restart: always
     volumes:
       - static_backend:/app/static_backend/
-      - media_backend:/app/media/
+      - media_backend:/app/media_backend/
     depends_on:
       - db
     env_file:
@@ -35,11 +35,11 @@ services:
     ports:
       - 80:80
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
-      - static_backend:/app/static_backend/:ro
-      - media_backend:/app/media_backend/:ro
+      - static_backend:/usr/share/nginx/html/static_backend/:ro
+      - media_backend:/usr/share/nginx/html/media_backend/:ro
     restart: always
     depends_on:
       - backend
