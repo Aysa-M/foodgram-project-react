@@ -39,7 +39,7 @@ services:
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
       - static_backend:/app/static_backend/:ro
-      - media_backend:/app/media/:ro
+      - media_backend:/app/media_backend/:ro
     restart: always
     depends_on:
       - backend
