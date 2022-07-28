@@ -1,9 +1,4 @@
-version: '3.8'
-
-volumes:
-  postgres_data:
-  static:
-  media:
+version: '3.3'
 
 services:
 
@@ -18,8 +13,8 @@ services:
     image: nanice/foodgram:latest
     restart: always
     volumes:
-      - static:/app/static/
-      - media:/app/media/
+      - static_backend:/app/static_backend/
+      - media_backend:/app/media/
     depends_on:
       - db
     env_file:
@@ -42,9 +37,14 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro
       - ../frontend/build:/usr/share/nginx/html/
-      - /docs/:/usr/share/nginx/html/api/docs/
-      - static:/app/static/:ro
-      - media:/app/media/:ro
+      - ../docs/:/usr/share/nginx/html/api/docs/
+      - static_backend:/app/static_backend/:ro
+      - media_backend:/app/media/:ro
     restart: always
     depends_on:
       - backend
+
+volumes:
+  postgres_data:
+  static_backend:
+  media_backend:

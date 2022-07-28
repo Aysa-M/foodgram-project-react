@@ -2,6 +2,7 @@ from typing import Dict
 
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from requests import request
 from rest_framework import exceptions, serializers, status, validators
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
@@ -170,9 +171,9 @@ class SubscriptionSerializer(CustomUserSerializer):
         """
         Collect the recipes of the author which is following by request user.
         """
-        request = self.context.get('request')
+        user = self.context.get('request').user
         limit = request.query_params.get('recipes_limit')
-        recipes = obj.recipes.only('id', 'name', 'image', 'cooking_time')
+        recipes = user.recipes.only('id', 'name', 'image', 'cooking_time')
         if limit:
             recipes = recipes[:int(limit)]
         return PartialRecipeSerializer(recipes, many=True).data
@@ -282,9 +283,8 @@ class RecipeListRetrieveSerializer(serializers.ModelSerializer):
     GET request: showing list of recipes.
     """
     tags = TagSerializer(many=True)
-    author = CustomUserSerializer()
-    ingredients = IngredientRecipeSerializer(many=True,
-                                             source='igredients_recipes')
+    author = CustomUserSerializer(read_only=True)
+    ingredients = IngredientRecipeSerializer(many=True)
     is_favorited = serializers.SerializerMethodField(
         method_name='get_is_favorited'
     )
@@ -340,14 +340,12 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
     Serializer / deserializer for model Recipe.
     POST, PATCH, DELETE requests: creation, update and deletion.
     """
-    author = CustomUserSerializer(read_only=True)
     ingredients = IngredientCUDRecipeSerializer(many=True)
     image = Base64ImageField()
 
     class Meta:
         model = Recipe
         fields = ('id',
-                  'author',
                   'ingredients',
                   'tags',
                   'image',
@@ -357,11 +355,18 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
 
     def validate(self, data: DICT_TYPES) -> None:
         """Validation data for recipe fields."""
+        user = self.context.get('request').user
+        author = data.get('author')
         tags = data.get('tags')
         image = data.get('image')
         name = data.get('name')
         text = data.get('text')
         cooking_time = data.get('cooking_time')
+        if author != user:
+            raise serializers.ValidationError(
+                detail='Вы не явяляетесь автором.',
+                code=status.HTTP_400_BAD_REQUEST
+            )
         if not tags:
             raise serializers.ValidationError(
                 detail='Необходимо выбрать теги',
@@ -391,7 +396,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
 
     def validate_ingredients(self, data: DICT_TYPES) -> None:
         """Validation ingredients data."""
-        ingredients = data['ingredients']
+        ingredients = self.initial_data['ingredients']
         if not ingredients or len(ingredients) == FALSE_RESULT:
             raise serializers.ValidationError(
                 detail=('Укажите название и количество '
@@ -437,9 +442,11 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
         """
         Creates a whole recipe with provided data.
         """
+        user = self.context.get('request').user
         ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
-        recipe = Recipe.objects.create(**validated_data)
+        recipe = Recipe.objects.create(
+            author=user['id'], **validated_data)
         recipe.tags.set(tags)
         self.create_ingredients(ingredients, recipe)
         return recipe
@@ -455,7 +462,21 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
         if 'tags' in validated_data:
             instance.tags.set(
                 validated_data.pop('tags'))
-        return super().update(instance, validated_data)
+        instance.name = validated_data.get(
+            'name',
+            instance.name
+        )
+        instance.text = validated_data.get(
+            'text',
+            instance.text
+        )
+        instance.cooking_time = validated_data.get(
+            'cooking_time',
+            instance.cooking_time
+        )
+        instance.image = validated_data.get('image', instance.image)
+        instance.save()
+        return instance
 
     def to_representation(self, instance):
         return RecipeListRetrieveSerializer(
