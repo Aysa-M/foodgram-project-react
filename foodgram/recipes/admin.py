@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from foodgram.settings import EMPTY_VALUE_DISPLAY
-from .models import (Favorite, Ingredient, IngredientRecipe, Recipe,
+from .models import (Favorite, Ingredient, Addamount, Recipe,
                      ShoppingCart, Tag)
 
 
@@ -24,7 +24,7 @@ class TagAdmin(admin.ModelAdmin):
 
 
 class IngredientInLine(admin.TabularInline):
-    model = IngredientRecipe
+    model = Addamount
 
 
 @admin.register(Recipe)
@@ -46,7 +46,7 @@ class RecipeAdmin(admin.ModelAdmin):
         return obj.favorites.count()
 
 
-@admin.register(IngredientRecipe)
+@admin.register(Addamount)
 class IngredientRecipeAdmin(admin.ModelAdmin):
     list_display = ('pk', 'ingredients', 'amount',)
     list_editable = ('ingredients', 'amount',)

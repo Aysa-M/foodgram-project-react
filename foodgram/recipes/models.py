@@ -107,7 +107,7 @@ class Recipe(models.Model):
     )
     ingredients = models.ManyToManyField(
         Ingredient,
-        through='IngredientRecipe',
+        through='Addamount',
         related_name='recipes',
         verbose_name='Список ингредиентов',
     )
@@ -140,7 +140,7 @@ class Recipe(models.Model):
         return reverse('recipe', args=[self.pk])
 
 
-class IngredientRecipe(models.Model):
+class Addamount(models.Model):
     """
     Class's used for the link between recipe and its ingredient.
     """
@@ -165,16 +165,6 @@ class IngredientRecipe(models.Model):
     class Meta:
         verbose_name = 'Количество ингредиента для рецепта'
         verbose_name_plural = 'Количество ингредиента для рецептов'
-        db_table = 'ingredient_recipe'
-        constraints = [
-            models.UniqueConstraint(
-                fields=('ingredients', 'amount',),
-                name='unique_ingredient_amount'),
-            models.CheckConstraint(
-                name='not_double_ingredient_amount',
-                check=~models.Q(ingredients=models.F('amount')),
-            )
-        ]
 
     def __str__(self) -> str:
         return (f'{self.ingredients} - {self.amount}')
@@ -203,11 +193,7 @@ class Favorite(models.Model):
         db_table = 'favorites'
         constraints = [
             models.UniqueConstraint(
-                fields=('user', 'recipe',),
-                name='unique_user_favorites'),
-            models.CheckConstraint(
-                name='not_double_favorites',
-                check=~models.Q(user=models.F('recipe')),
+                fields=['user', 'recipe'], name='unique_user_favorites'
             )
         ]
 
@@ -235,10 +221,6 @@ class ShoppingCart(models.Model):
         db_table = 'cart'
         constraints = [
             models.UniqueConstraint(
-                fields=('user', 'recipe',),
-                name='unique_shopping_cart'),
-            models.CheckConstraint(
-                name='not_double_cart',
-                check=~models.Q(user=models.F('recipe')),
+                fields=['user', 'recipe'], name='unique_cart'
             )
         ]

@@ -3,20 +3,22 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from djoser.views import UserViewSet
 from django_filters.rest_framework import DjangoFilterBackend
 from reportlab.pdfgen import canvas
 
 from users.models import Subscription, User
-from recipes.models import (Favorite, Ingredient, IngredientRecipe, Recipe,
+from recipes.models import (Favorite, Ingredient, Addamount, Recipe,
                             ShoppingCart, Tag)
 from .filters import RecipeFilter
 from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
-                     ListRetrieveViewSet)
+                     ListViewSet, ListRetrieveViewSet)
 from .pagination import FoodGramPagination
-from .permissions import IsAdmin, IsAuthorOnly, IsAuthorOrReadOnly
+from .permissions import (IsAdmin,
+                          IsAuthorOnly,
+                          IsObjectAuthorAuthUserAdminOrReadOnly)
 from .serializers import (CustomUserSerializer, AccountSerializer,
                           FavoriteSerializer, IngredientSerializer,
                           RecipeListRetrieveSerializer,
@@ -54,29 +56,34 @@ class CustomUserViewSet(UserViewSet):
             status=status.HTTP_200_OK)
 
 
-class SubscriptionViewSet(ListCreateDestroyViewSet):
+class SubscriptionViewSet(ListViewSet):
     """
-    Handler function for the processing GET, POST, DEL requests for
+    Handler function for the processing GET requests for
     subscriptions.
     """
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    permission_classes = (IsAdmin, IsAuthorOnly,)
+    permission_classes = (IsAuthorOnly,)
     pagination_class = FoodGramPagination
+    http_method_names = ('get', )
 
-    def get_queryset(self) -> Subscription:
-        """
-        Get a list of request user subscriptions.
-        """
-        return Subscription.objects.filter(user=self.request.user)
+
+class SubscriptionCDViewSet(CreateDestroyViewSet):
+    """
+    Handler function for the processing POST, DEL requests for
+    subscriptions.
+    """
+    serializer_class = SubscriptionSerializer
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ('post', 'delete', )
 
     def perform_create(self, serializer) -> Subscription:
-        """
-        Create new subscription for the request user.
-        """
         serializer.save(user=self.request.user)
 
     def create(self, request, *args, **kwargs) -> Subscription:
+        """
+        Create new subscription for the request user.
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -134,7 +141,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     the further requests: GET, POST, PATCH, DEL.
     """
     queryset = Recipe.objects.all()
-    permission_classes = (IsAuthenticated, IsAuthorOrReadOnly,)
+    permission_classes = (IsObjectAuthorAuthUserAdminOrReadOnly,)
     pagination_class = FoodGramPagination
     http_method_names = ['get', 'post', 'patch', 'delete', ]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
@@ -142,14 +149,22 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filterset_fields = ('tags', 'author',
                         'is_favorited', 'is_in_shopping_cart',)
     search_fields = ('$name', )
+    http_method_names = ('get', 'post', 'put', 'patch', 'delete',)
 
     def get_serializer_class(self, *args, **kwargs):
-        if self.request.method == 'get':
+        if self.request.method in SAFE_METHODS:
             return RecipeListRetrieveSerializer
         return RecipeManipulationSerializer
 
     def perform_create(self, serializer) -> Recipe:
         serializer.save(author=self.request.user)
+
+    @action(
+        permission_classes=(IsAuthorOnly,),
+        detail=False
+    )
+    def perform_destroy(self, instance):
+        return super().perform_destroy(instance)
 
 
 class FavoriteViewSet(CreateDestroyViewSet):
@@ -159,7 +174,7 @@ class FavoriteViewSet(CreateDestroyViewSet):
     """
     queryset = Favorite.objects.all()
     serializer_class = FavoriteSerializer
-    permission_classes = (IsAuthenticated, IsAuthorOnly, IsAdmin,)
+    permission_classes = (IsAuthenticated,)
 
     def perform_create(self, serializer) -> Favorite:
         """
@@ -203,7 +218,7 @@ class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
         download shopping list provided by recipes.
         """
         buffer = {}
-        ingredients = IngredientRecipe.objects.filter(
+        ingredients = Addamount.objects.filter(
             recipe__user_cart__user=request.user).values(
                 'ingredient__name', 'ingredient__measurement_unit'
         ).annotate(total=Sum('amount'))

@@ -107,7 +107,7 @@ class Subscription(models.Model):
                 name='unique_subscription'),
             models.CheckConstraint(
                 name='do_not_subscribe_again',
-                check=~models.Q(author=models.F('author')),
+                check=~models.Q(user=models.F('author')),
             )
         ]
 
