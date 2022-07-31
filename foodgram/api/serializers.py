@@ -317,7 +317,7 @@ class RecipeListRetrieveSerializer(serializers.ModelSerializer):
                   'cooking_time',)
 
     def get_ingredients(self, obj: Recipe) -> AddamountSerializer:
-        """The method is for dicplaying information"""
+        """The method is for displaying information"""
         ingredients = Addamount.objects.filter(recipe=obj)
         return AddamountSerializer(ingredients, many=True).data
 
@@ -357,6 +357,8 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
     POST, PATCH, DELETE requests: creation, update and deletion.
     """
     ingredients = AddamountCUDSerializer(many=True, read_only=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(), many=True)
     image = Base64ImageField()
 
     class Meta:
@@ -449,21 +451,15 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
         for ingredient in ingredients:
             bulk_list.append(Addamount(
                 recipe=recipe,
-                ingredients=ingredient.get('name'),
-                amount=ingredient.get('amount')
+                ingredients=ingredient.get('id'),
+                amount=ingredient.get('amount'),
             ))
         return Addamount.objects.bulk_create(bulk_list)
 
     def create(self, validated_data) -> Recipe:
         """Creates new recipes."""
-        author = self.context.get('request').user
-        ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
-        recipe = Recipe.objects.create(
-            author=author,
-            **validated_data
-        )
-        self.create_ingredients(recipe, ingredients)
+        recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
         return recipe
 

@@ -54,6 +54,15 @@ class IngredientRecipeAdmin(admin.ModelAdmin):
     search_fields = ('ingredient_for_recipe__name',)
     empty_value_display = EMPTY_VALUE_DISPLAY
 
+    @ admin.display(description='Ингредиенты')
+    def get_ingredients(self, obj):
+        return '\n'.join([
+            f'{item["ingredient__name"]} - {item["amount"]}'
+            f'{item["ingredient__measurement_unit"]}.'
+            for item in obj.recipe.values(
+                'ingredient__name',
+                'amount', 'ingredient__measurement_unit')])
+
 
 @admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):

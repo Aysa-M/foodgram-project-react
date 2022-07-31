@@ -13,9 +13,13 @@ os.chdir(path)
 
 # loading ingredients from csv file
 with open('ingredients.csv', 'r', encoding='utf-8') as file:
-    reader = csv.DictReader(file, fieldnames=['name', 'measurement_unit'])
+    reader = csv.DictReader(
+        file,
+        delimiter=",",
+        fieldnames=['name', 'measurement_unit']
+    )
     to_db = (Ingredient(
-        name=['name'],
-        measurement_unit=['measurement_unit']
+        name=_['name'],
+        measurement_unit=_['measurement_unit']
     ) for _ in reader)
     Ingredient.objects.bulk_create(to_db)

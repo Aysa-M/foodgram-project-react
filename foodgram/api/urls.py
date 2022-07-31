@@ -1,4 +1,5 @@
 from django.urls import include, path
+from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
 
 from .views import (CustomUserViewSet, FavoriteViewSet, IngredientViewSet,
@@ -22,6 +23,11 @@ router.register(r'recipes/(?P<recipe_id>\d+)/favorite',
 app_name = 'api'
 urlpatterns = [
     path('', include(router.urls)),
+    path(
+        'docs/',
+        TemplateView.as_view(template_name='redoc.html'),
+        name='docs'
+    ),
     path('users/<int:id>/subscribe/', SubscriptionCDViewSet, name='subscribe'),
     path('users/subscriptions/', SubscriptionViewSet, name='subscriptions'),
     path('auth/', include('djoser.urls')),

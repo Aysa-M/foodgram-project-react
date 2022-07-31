@@ -12,11 +12,12 @@ from reportlab.pdfgen import canvas
 from users.models import Subscription, User
 from recipes.models import (Favorite, Ingredient, Addamount, Recipe,
                             ShoppingCart, Tag)
-from .filters import RecipeFilter
+from .filters import RecipeFilter, IngredientSearchFilter
 from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
                      ListViewSet, ListRetrieveViewSet)
 from .pagination import FoodGramPagination
 from .permissions import (IsAdmin,
+                          IsAdminOrReadOnly,
                           IsAuthorOnly,
                           IsObjectAuthorAuthUserAdminOrReadOnly)
 from .serializers import (CustomUserSerializer, AccountSerializer,
@@ -118,11 +119,13 @@ class IngredientViewSet(ListRetrieveViewSet):
     ingredient.
     """
     queryset = Ingredient.objects.all()
+    permission_classes = (IsAdminOrReadOnly,)
     serializer_class = IngredientSerializer
-    permission_classes = (AllowAny,)
     pagination_class = None
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
-    search_fields = ('$name', )
+    filter_class = IngredientSearchFilter
+    search_fields = ('$name',)
+    http_method_names = ('get',)
 
 
 class TagViewSet(ListRetrieveViewSet):
@@ -131,7 +134,7 @@ class TagViewSet(ListRetrieveViewSet):
     """
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAdminOrReadOnly,)
     pagination_class = None
 
 
@@ -143,7 +146,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = (IsObjectAuthorAuthUserAdminOrReadOnly,)
     pagination_class = FoodGramPagination
-    http_method_names = ['get', 'post', 'patch', 'delete', ]
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
     filterset_class = RecipeFilter
     filterset_fields = ('tags', 'author',
