@@ -33,7 +33,7 @@ class RecipeAdmin(admin.ModelAdmin):
     inlines = [
         IngredientInLine,
     ]
-    list_filter = ('author', 'name', 'tags', 'ingredients')
+    list_filter = ('author', 'name', 'tags',)
     search_fields = ('name',)
     readonly_fields = ('in_favorites',)
     empty_value_display = EMPTY_VALUE_DISPLAY

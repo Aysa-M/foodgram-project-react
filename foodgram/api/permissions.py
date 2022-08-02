@@ -1,29 +1,6 @@
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
-class IsObjectAuthorAuthUserAdminOrReadOnly(BasePermission):
-    """
-    Custom permissions for author|authorised user|admin to make
-    manipulations with their own objects.
-    """
-    def has_object_permission(self, request, view, obj):
-        return (
-            request.method in SAFE_METHODS
-            or request.user == obj.author
-            or request.user.is_user
-            or request.user.is_admin
-        )
-
-
-class IsAdmin(BasePermission):
-    """
-    Custom permissions for admin only to make
-    manipulations with all the objects in the system.
-    """
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.is_admin
-
-
 class IsAdminOrReadOnly(BasePermission):
     """
     Custom permissions for admin to make
@@ -42,11 +19,15 @@ class IsAuthorOnly(BasePermission):
     manipulations with it.
     """
     def has_permission(self, request, view):
-        return (request.user.is_authenticated)
+        return (
+            request.method in SAFE_METHODS
+            or request.user.is_authenticated
+        )
 
     def has_object_permission(self, request, view, obj):
-        return (request.method in SAFE_METHODS
-                or obj.author == request.user)
+        if obj.user == request.user:
+            return True
+        return False
 
 
 class IsAuthorOrReadOnly(BasePermission):

@@ -213,6 +213,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         """
         Checks user's subscription.
         """
+        user = self.context.get('request').user
         subscription_id = data.get('id')
         user_id = data.get('user_id')
         author_id = data.get('author_id')
@@ -224,7 +225,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                 detail=(f'Вы уже подписаны на {author_id}.'),
                 code=status.HTTP_400_BAD_REQUEST
             )
-        if user_id == author_id:
+        if author_id == user.id:
             raise serializers.ValidationError(
                 detail='Вы не можете подписаться на самого себя.',
                 code=status.HTTP_400_BAD_REQUEST
@@ -235,7 +236,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         context = {'request': request}
         return SubscriptionListSerializer(
-            instance.following, context=context).data
+            instance.author, context=context).data
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -441,12 +442,10 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
             ingredients_id.append(ingredient)
         return data
 
-    def create_ingredients(self, recipe, validated_data) -> Addamount:
+    def create_ingredients(self, recipe, ingredients) -> Addamount:
         """
         Creates a model linking a current ingredient with recipe.
         """
-        ingredients = validated_data.pop('ingredients')
-        recipe = validated_data
         bulk_list = []
         for ingredient in ingredients:
             bulk_list.append(Addamount(
@@ -458,9 +457,11 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data) -> Recipe:
         """Creates new recipes."""
+        ingredients = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
+        recipe.add(self.create_ingredients(recipe, ingredients))
         return recipe
 
     def update(self, instance, validated_data) -> Recipe:
@@ -495,20 +496,25 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
 
 class FavoriteSerializer(serializers.ModelSerializer):
     """Serializer / deserializer for model Favorite."""
-    user = CustomUserSerializer(read_only=True)
-    recipe = PartialRecipeSerializer(read_only=True)
 
     class Meta:
         model = Favorite
-        fields = ('user', 'recipe',)
+        fields = ('user', 'recipe')
+        validators = [
+            validators.UniqueTogetherValidator(
+                queryset=Favorite.objects.all(),
+                fields=('user', 'recipe'),
+                message=('Рецепт уже в избранном')
+            )
+        ]
 
     def validate(self, data) -> bool:
         """
         Checks if a recipe already in user's list of favorites.
         """
-        request = self.context.get('request')
-        recipe_req = data.get('recipe')
-        if Favorite.objects.filter(user=request.user,
+        user = data.get('user_id')
+        recipe_req = data['recipe']
+        if Favorite.objects.filter(user=user,
                                    recipe=recipe_req).exists():
             raise serializers.ValidationError(
                 detail=(f'{recipe_req} уже есть в вашем списке.'),
@@ -525,20 +531,28 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
     """Serializer / deserializer for model Shopping cart."""
-    user = CustomUserSerializer(read_only=True)
-    recipe = PartialRecipeSerializer(read_only=True)
 
     class Meta:
-        model = Favorite
-        fields = ('user', 'recipe',)
+        model = ShoppingCart
+        fields = ('user', 'recipe')
+        validators = [
+            validators.UniqueTogetherValidator(
+                queryset=ShoppingCart.objects.all(),
+                fields=('user', 'recipe'),
+                message=('Рецепт уже есть в списке покупок')
+            )
+        ]
 
     def validate(self, data) -> bool:
         """
         Checks if a recipe already in user's list of shopping list.
         """
         request = self.context.get('request')
+        if not request or request.user.is_anonymous:
+            return False
+        user = data.get('user_id')
         recipe_req = data.get('recipe')
-        if ShoppingCart.objects.filter(user=request.user,
+        if ShoppingCart.objects.filter(user=user,
                                        recipe=recipe_req).exists():
             raise serializers.ValidationError(
                 detail=(f'{recipe_req} уже есть в списке покупок.'),

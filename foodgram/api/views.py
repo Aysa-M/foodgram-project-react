@@ -2,8 +2,12 @@ from django.db.models import Sum
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
+from rest_framework.views import APIView
 from rest_framework.decorators import action
-from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAuthenticated
+from rest_framework.permissions import (SAFE_METHODS,
+                                        AllowAny,
+                                        IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 from djoser.views import UserViewSet
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,15 +16,16 @@ from reportlab.pdfgen import canvas
 from users.models import Subscription, User
 from recipes.models import (Favorite, Ingredient, Addamount, Recipe,
                             ShoppingCart, Tag)
-from .filters import RecipeFilter, IngredientSearchFilter
-from .mixins import (CreateDestroyViewSet, ListCreateDestroyViewSet,
+from .filters import (RecipeFilter,
+                      IngredientSearchFilter,
+                      IsOwnerFilterBackend)
+from .mixins import (CreateDestroyViewSet,
                      ListViewSet, ListRetrieveViewSet)
 from .pagination import FoodGramPagination
-from .permissions import (IsAdmin,
-                          IsAdminOrReadOnly,
-                          IsAuthorOnly,
-                          IsObjectAuthorAuthUserAdminOrReadOnly)
-from .serializers import (CustomUserSerializer, AccountSerializer,
+from .permissions import (IsAdminOrReadOnly,
+                          IsAuthorOnly,)
+from .serializers import (CustomUserSerializer,
+                          AccountSerializer,
                           FavoriteSerializer, IngredientSerializer,
                           RecipeListRetrieveSerializer,
                           RecipeManipulationSerializer,
@@ -64,12 +69,14 @@ class SubscriptionViewSet(ListViewSet):
     """
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
+    filter_backends = (DjangoFilterBackend,)
+    filter_class = IsOwnerFilterBackend
     permission_classes = (IsAuthorOnly,)
     pagination_class = FoodGramPagination
     http_method_names = ('get', )
 
 
-class SubscriptionCDViewSet(CreateDestroyViewSet):
+class SubscriptionCreateDeleteAPIView(APIView):
     """
     Handler function for the processing POST, DEL requests for
     subscriptions.
@@ -78,33 +85,28 @@ class SubscriptionCDViewSet(CreateDestroyViewSet):
     permission_classes = (IsAuthenticated,)
     http_method_names = ('post', 'delete', )
 
-    def perform_create(self, serializer) -> Subscription:
-        serializer.save(user=self.request.user)
-
-    def create(self, request, *args, **kwargs) -> Subscription:
+    def post(self, request, id) -> Subscription:
         """
         Create new subscription for the request user.
         """
-        serializer = self.get_serializer(data=request.data)
+        data = {'user': request.user.id, 'author': id}
+        serializer = SubscriptionSerializer(
+            data=data,
+            context={'request': request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        self.perform_create(serializer)
-        serializer = SubscriptionSerializer(
-            instance=serializer.instance,
-            context={'request': self.request}
-        )
-        headers = self.get_success_headers(serializer.data)
         return Response(serializer.data,
-                        status=status.HTTP_201_CREATED,
-                        headers=headers)
+                        status=status.HTTP_201_CREATED)
 
-    def delete(self, request, *args, **kwargs) -> None:
+    def delete(self, request, id) -> None:
         """
         Delete a chosen subscription from the request user subscriptions list.
         """
-        author_id = get_object_or_404(User, id=self.kwargs.get('author_id'))
-        subscription = Subscription.objects.filter(user=request.user,
-                                                   author=author_id).exists()
+        user = request.user
+        author = get_object_or_404(User, id=id)
+        subscription = get_object_or_404(
+            Subscription, user=user, author=author)
         if subscription:
             subscription.delete()
             return Response('Вы отписались от автора.',
@@ -119,7 +121,7 @@ class IngredientViewSet(ListRetrieveViewSet):
     ingredient.
     """
     queryset = Ingredient.objects.all()
-    permission_classes = (IsAdminOrReadOnly,)
+    permission_classes = (IsAuthenticated,)
     serializer_class = IngredientSerializer
     pagination_class = None
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
@@ -144,7 +146,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     the further requests: GET, POST, PATCH, DEL.
     """
     queryset = Recipe.objects.all()
-    permission_classes = (IsObjectAuthorAuthUserAdminOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = FoodGramPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
     filterset_class = RecipeFilter
@@ -161,59 +163,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer) -> Recipe:
         serializer.save(author=self.request.user)
 
-    @action(
-        permission_classes=(IsAuthorOnly,),
-        detail=False
-    )
-    def perform_destroy(self, instance):
-        return super().perform_destroy(instance)
-
-
-class FavoriteViewSet(CreateDestroyViewSet):
-    """
-    Handler function for the processing POST and DEL requests for
-    favorits of the request user.
-    """
-    queryset = Favorite.objects.all()
-    serializer_class = FavoriteSerializer
-    permission_classes = (IsAuthenticated,)
-
-    def perform_create(self, serializer) -> Favorite:
-        """
-        Create new subscription for the request user.
-        """
-        serializer.save(user=self.request.user)
-
-    def delete(self, request, *args, **kwargs) -> None:
-        """
-        Delete a chosen recipe from the request user favorite list.
-        """
-        recipe_id = get_object_or_404(Recipe, id=self.kwargs.get('recipe_id'))
-        favorite = Favorite.objects.filter(user=request.user,
-                                           recipe=recipe_id).exists()
-        if favorite:
-            favorite.delete()
-            return Response(
-                'Рецепт удален из Избранного.',
-                status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'error': 'В Избранном такого рецепта нет.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
-    """
-    Handler function for the processing GET, POST, DEL requests for
-    shopping cart list.
-    """
-    queryset = ShoppingCart.objects.all()
-    serializer_class = ShoppingCartSerializer
-    permission_classes = (IsAuthenticated, IsAuthorOnly, IsAdmin,)
-
-    @action(methods=['GET'],
-            permission_classes=[IsAuthenticated, IsAuthorOnly, ],
-            detail=False)
+    @action(methods=('GET',),
+            detail=False,
+            url_path='download_shopping_cart',
+            serializer_class=ShoppingCartSerializer,
+            permission_classes=(IsAuthorOnly,))
     def download_shopping_cart(self, request) -> None:
         """
         Authorised request user who's an owner of shopping cart
@@ -221,8 +175,8 @@ class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
         """
         buffer = {}
         ingredients = Addamount.objects.filter(
-            recipe__user_cart__user=request.user).values(
-                'ingredient__name', 'ingredient__measurement_unit'
+            recipe__cart__user=request.user).values(
+                'ingredients__name', 'ingredients__measurement_unit'
         ).annotate(total=Sum('amount'))
         for field in ingredients:
             name = field[0]
@@ -243,25 +197,90 @@ class ShoppingCartViewSet(ListRetrieveViewSet, ListCreateDestroyViewSet):
                             as_attachment=True,
                             filename='shopping_list.pdf')
 
-    @action(methods=['POST'],
-            permission_classes=[IsAuthenticated, IsAuthorOnly, ],
-            detail=False)
+
+class FavoriteViewSet(CreateDestroyViewSet):
+    """
+    Handler function for the processing POST and DEL requests for
+    favorits of the request user.
+    """
+    queryset = Favorite.objects.all()
+    serializer_class = FavoriteSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def perform_create(self, serializer) -> Favorite:
+        """
+        Create new subscription for the request user.
+        """
+        serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs) -> Favorite:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        self.perform_create(serializer)
+        serializer = FavoriteSerializer(
+            instance=serializer.instance,
+            context={'request': self.request}
+        )
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data,
+                        status=status.HTTP_201_CREATED,
+                        headers=headers)
+
+    def delete(self, request, *args, **kwargs) -> None:
+        """
+        Delete a chosen recipe from the request user favorite list.
+        """
+        recipe_id = get_object_or_404(Recipe, id=self.kwargs.get('recipe_id'))
+        favorite = Favorite.objects.filter(user=request.user,
+                                           recipe=recipe_id)
+        if favorite:
+            favorite.delete()
+            return Response(
+                'Рецепт удален из Избранного.',
+                status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'error': 'В Избранном такого рецепта нет.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class ShoppingCartViewSet(CreateDestroyViewSet):
+    """
+    Handler function for the processing GET, POST, DEL requests for
+    shopping cart list.
+    """
+    queryset = ShoppingCart.objects.all()
+    serializer_class = ShoppingCartSerializer
+    permission_classes = (IsAuthenticated,)
+
     def perform_create(self, serializer) -> ShoppingCart:
         """
         Create new shopping cart for the request user.
         """
         serializer.save(user=self.request.user)
 
-    @action(methods=['DELETE'],
-            permission_classes=[IsAuthenticated, IsAuthorOnly, ],
-            detail=False)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        self.perform_create(serializer)
+        serializer = ShoppingCartSerializer(
+            instance=serializer.instance,
+            context={'request': self.request}
+        )
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data,
+                        status=status.HTTP_201_CREATED,
+                        headers=headers)
+
     def delete(self, request, *args, **kwargs) -> None:
         """
         Delete a chosen recipe from the request user favorite list.
         """
         recipe_id = get_object_or_404(Recipe, id=self.kwargs.get('recipe_id'))
         shopping_cart = ShoppingCart.objects.filter(user=request.user,
-                                                    recipe=recipe_id).exists()
+                                                    recipe=recipe_id)
         if shopping_cart:
             shopping_cart.delete()
             return Response(

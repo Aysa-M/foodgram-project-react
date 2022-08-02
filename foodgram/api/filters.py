@@ -1,15 +1,24 @@
-from django_filters.rest_framework import (FilterSet,
-                                           filters)
+from django_filters.rest_framework import FilterSet, filters
+from rest_framework.filters import SearchFilter, BaseFilterBackend
 
-from recipes.models import Recipe, Ingredient
+from recipes.models import Recipe
 
 
-class IngredientSearchFilter():
-    name = filters.CharFilter(field_name='name', lookup_expr='istartswith')
+class IngredientSearchFilter(SearchFilter):
+    def get_search_fields(self, view, request):
+        if request.query_params.get('name'):
+            return['name']
+        return super(
+            IngredientSearchFilter, self
+        ).get_search_fields(view, request)
 
-    class Meta:
-        model = Ingredient
-        fields = ('name', )
+
+class IsOwnerFilterBackend(BaseFilterBackend):
+    """
+    Фильтр, позволяющий пользователям видеть только свои собственные объекты.
+    """
+    def filter_queryset(self, request, queryset, view):
+        return queryset.filter(author=request.user)
 
 
 class RecipeFilter(FilterSet):
