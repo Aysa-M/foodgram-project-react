@@ -486,7 +486,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
             )
             instance.image = validated_data.get('image', instance.image)
             instance.save()
-        return instance
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         return RecipeListRetrieveSerializer(

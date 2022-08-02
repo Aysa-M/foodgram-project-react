@@ -7,8 +7,7 @@ from rest_framework.viewsets import GenericViewSet
 from rest_framework.decorators import action
 from rest_framework.permissions import (SAFE_METHODS,
                                         AllowAny,
-                                        IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+                                        IsAuthenticated,)
 from rest_framework.response import Response
 from djoser.views import UserViewSet
 from django_filters.rest_framework import DjangoFilterBackend
@@ -17,13 +16,14 @@ from reportlab.pdfgen import canvas
 from users.models import Subscription, User
 from recipes.models import (Favorite, Ingredient, Addamount, Recipe,
                             ShoppingCart, Tag)
-from .filters import (RecipeFilter,
-                      IngredientSearchFilter,
-                      IsOwnerFilterBackend)
+from .filters import (IngredientSearchFilter,
+                      IsOwnerFilterBackend,
+                      RecipeFilter)
 from .mixins import (ListViewSet, ListRetrieveViewSet)
 from .pagination import FoodGramPagination
 from .permissions import (IsAdminOrReadOnly,
-                          IsAuthorOnly,)
+                          IsAuthorOnly,
+                          IsAuthorOrAdminOrReadOnly,)
 from .serializers import (CustomUserSerializer,
                           AccountSerializer,
                           FavoriteSerializer, IngredientSerializer,
@@ -123,10 +123,8 @@ class IngredientViewSet(ListRetrieveViewSet):
     queryset = Ingredient.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = IngredientSerializer
-    pagination_class = None
-    filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
+    filter_backends = (DjangoFilterBackend,)
     filter_class = IngredientSearchFilter
-    search_fields = ('$name',)
     http_method_names = ('get',)
 
 
@@ -146,7 +144,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     the further requests: GET, POST, PATCH, DEL.
     """
     queryset = Recipe.objects.all()
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsAuthorOrAdminOrReadOnly,)
     pagination_class = FoodGramPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
     filterset_class = RecipeFilter
@@ -190,13 +188,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
     @action(
-        methods=('post', 'delete',),
+        methods=('get', 'delete',),
         detail=True,
         permission_classes=(IsAuthenticated,)
     )
     def favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        if request.method == 'POST':
+        if request.method == 'GET':
             return self.favorite_adding(request, recipe.id)
         return self.delete_from_favorit(request, recipe.id)
 
@@ -209,7 +207,7 @@ class ShoppingCartViewSet(GenericViewSet):
     queryset = ShoppingCart.objects.all()
     serializer_class = ShoppingCartSerializer
     permission_classes = (IsAuthenticated,)
-    http_method_names = ('get', 'post', 'delete', )
+    http_method_names = ('get', 'delete', )
 
     @action(methods=('GET',),
             detail=False,
@@ -272,12 +270,11 @@ class ShoppingCartViewSet(GenericViewSet):
         )
 
     @action(
-        methods=('post', 'delete',),
+        methods=('get', 'delete',),
         detail=True,
-        permission_classes=(IsAuthenticated,)
     )
     def shopping_cart(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        if request.method == 'POST':
+        if request.method == 'GET':
             return self.add_to_shopping_cart(request, recipe.id)
         return self.delete_from_shopping_cart(request, recipe.id)
