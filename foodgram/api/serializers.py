@@ -461,7 +461,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags)
-        recipe.add(self.create_ingredients(recipe, ingredients))
+        self.create_ingredients(recipe, ingredients)
         return recipe
 
     def update(self, instance, validated_data) -> Recipe:

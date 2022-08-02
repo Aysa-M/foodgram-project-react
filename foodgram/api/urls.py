@@ -2,8 +2,8 @@ from django.urls import include, path
 from django.views.generic import TemplateView
 from rest_framework.routers import DefaultRouter
 
-from .views import (CustomUserViewSet, FavoriteViewSet, IngredientViewSet,
-                    RecipeViewSet, ShoppingCartViewSet,
+from .views import (CustomUserViewSet, IngredientViewSet,
+                    RecipeViewSet,
                     SubscriptionCreateDeleteAPIView,
                     SubscriptionViewSet, TagViewSet)
 
@@ -12,12 +12,6 @@ router.register(r'users', CustomUserViewSet, basename='users_list')
 router.register(r'ingredients', IngredientViewSet, basename='ingredients')
 router.register(r'tags', TagViewSet, basename='tags')
 router.register(r'recipes', RecipeViewSet, basename='recipes')
-router.register(r'recipes/(?P<recipe_id>\d+)/favorite',
-                FavoriteViewSet,
-                basename='favorite')
-router.register(r'recipes/(?P<recipe_id>\d+)/shopping_cart',
-                ShoppingCartViewSet,
-                basename='shopping_cart')
 
 app_name = 'api'
 

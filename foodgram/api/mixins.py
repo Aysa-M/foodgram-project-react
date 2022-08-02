@@ -18,14 +18,3 @@ class ListRetrieveViewSet(mixins.ListModelMixin,
     of objects or some current object as a response.
     """
     pass
-
-
-class CreateDestroyViewSet(mixins.CreateModelMixin,
-                           mixins.DestroyModelMixin,
-                           viewsets.GenericViewSet):
-    """
-    Custom viewset for processing:
-    POST-request provides creation of a new model object,
-    DEL-request provides destroying a current model object.
-    """
-    pass
