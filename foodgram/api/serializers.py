@@ -357,7 +357,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
     Serializer / deserializer for model Recipe.
     POST, PATCH, DELETE requests: creation, update and deletion.
     """
-    ingredients = AddamountCUDSerializer(many=True, read_only=True)
+    ingredients = AddamountCUDSerializer(many=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(), many=True)
     image = Base64ImageField()
