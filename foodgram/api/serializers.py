@@ -49,12 +49,15 @@ class CustomUserSerializer(UserSerializer):
 
     def get_is_subscribed(self, obj: User) -> bool:
         """Checks if a current user had subscrubed to the author's account"""
-        user = self.context.get('request').user
-        url = reverse('api:users_list-me', args=[user.pk])
+        request = self.context.get('request')
+        if request.user.is_anonymous:
+            return False
+        if request.user.is_authenticated:
+            return Subscription.objects.filter(
+                user=request.user, author=obj).exists()
+        url = reverse('api:users_list-me', args=[request.user.pk])
         if self.context.get('request').path_info == url:
             return False
-        if user.is_authenticated:
-            return Subscription.objects.filter(user=user, author=obj).exists()
         return False
 
     def validate_user(self, value: DICT_TYPES) -> None:
@@ -330,9 +333,8 @@ class RecipeListRetrieveSerializer(serializers.ModelSerializer):
         if self.context.get('request').method == 'POST':
             return False
         user = self.context.get('request').user
-        recipe = self.context.get('recipe_id')
         if user.is_authenticated:
-            return Favorite.objects.filter(user=user, recipe=recipe).exists()
+            return user.user_favorite.filter(recipe=obj).exists()
         return False
 
     def get_is_in_shopping_cart(self, obj: Recipe) -> bool:
@@ -343,12 +345,8 @@ class RecipeListRetrieveSerializer(serializers.ModelSerializer):
         if self.context.get('request').method == 'POST':
             return False
         user = self.context.get('request').user
-        recipe = self.context.get('recipe_id')
         if user.is_authenticated:
-            return ShoppingCart.objects.filter(
-                user=user,
-                recipe=recipe
-            ).exists()
+            return user.user_cart.filter(recipe=obj).exists()
         return False
 
 
@@ -468,25 +466,22 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
         """
         Updates recipes.
         """
-        user = self.context.get('request').user
-        author = validated_data.get('author', instance.author)
-        if user == author:
-            if 'ingredients' in validated_data:
-                ingredients = validated_data.pop('ingredients')
-                instance.ingredients.clear()
-                self.create_ingredients(ingredients, instance)
-            if 'tags' in validated_data:
-                instance.tags.set(
-                    validated_data.pop('tags'))
-            instance.name = validated_data.get('name', instance.name)
-            instance.text = validated_data.get('text', instance.text)
-            instance.cooking_time = validated_data.get(
-                'cooking_time',
-                instance.cooking_time
-            )
-            instance.image = validated_data.get('image', instance.image)
-            instance.save()
-        return super().update(instance, validated_data)
+        recipe = instance
+        instance.name = validated_data.get('name', instance.name)
+        instance.text = validated_data.get('text', instance.text)
+        instance.cooking_time = validated_data.get(
+            'cooking_time',
+            instance.cooking_time
+        )
+        instance.image = validated_data.get('image', instance.image)
+        instance.tags.clear()
+        tags = validated_data.get('tags')
+        instance.tags.set(tags)
+        Addamount.objects.filter(recipe=recipe).all().delete()
+        ingredients = validated_data.get('ingredients')
+        self.create_ingredients(recipe, ingredients)
+        instance.save()
+        return instance
 
     def to_representation(self, instance):
         return RecipeListRetrieveSerializer(

@@ -2,7 +2,15 @@ from django_filters.rest_framework import (FilterSet,
                                            filters,)
 from rest_framework.filters import BaseFilterBackend
 
-from recipes.models import Recipe
+from recipes.models import Ingredient, Recipe
+
+
+class IngredientSearchFilter(FilterSet):
+    name = filters.CharFilter(lookup_expr='istartswith')
+
+    class Meta:
+        model = Ingredient
+        fields = ('name',)
 
 
 class IsOwnerFilterBackend(BaseFilterBackend):
