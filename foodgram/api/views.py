@@ -21,8 +21,7 @@ from .filters import (IngredientSearchFilter,
 from .mixins import (ListViewSet, ListRetrieveViewSet)
 from .pagination import FoodGramPagination
 from .permissions import (IsAdminOrReadOnly,
-                          IsAuthorOnly,
-                          IsAuthorOrAdminOrReadOnly,)
+                          IsAuthorOnly,)
 from .serializers import (CustomUserSerializer,
                           AccountSerializer,
                           FavoriteSerializer, IngredientSerializer,
@@ -120,7 +119,6 @@ class IngredientViewSet(ListRetrieveViewSet):
     ingredient.
     """
     queryset = Ingredient.objects.all()
-    permission_classes = (IsAuthenticatedOrReadOnly,)
     serializer_class = IngredientSerializer
     pagination_class = None
     filterset_class = IngredientSearchFilter
@@ -143,7 +141,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     the further requests: GET, POST, PATCH, DEL.
     """
     queryset = Recipe.objects.all()
-    permission_classes = (IsAuthorOrAdminOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly,)
     pagination_class = FoodGramPagination
     filter_backends = (DjangoFilterBackend, filters.SearchFilter,)
     filterset_class = RecipeFilter
@@ -151,25 +149,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
                         'is_favorited', 'is_in_shopping_cart',)
     search_fields = ('$name', )
     http_method_names = ('get', 'post', 'patch', 'delete',)
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_authenticated:
-            return Recipe.objects.annotate(
-                is_favorited=Exists(Favorite.objects.filter(
-                    user=user, recipe=OuterRef('id')
-                )),
-                is_in_shopping_cart=Exists(ShoppingCart.objects.filter(
-                    user=user, recipe=OuterRef('id')
-                ))
-            ).select_related('author').prefetch_related(
-                'tags', 'ingredients', 'favorites', 'cart')
-        else:
-            return Recipe.objects.annotate(
-                is_favorited=Value(False),
-                is_in_shopping_cart=Value(False)
-            ).select_related('author').prefetch_related(
-                'tags', 'ingredients', 'favorites', 'cart')
 
     def get_serializer_class(self, *args, **kwargs):
         if self.request.method in SAFE_METHODS:
@@ -207,13 +186,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         )
 
     @action(
-        methods=('get', 'delete',),
+        methods=('post', 'delete',),
         detail=True,
         permission_classes=(IsAuthenticated,)
     )
     def favorite(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        if request.method == 'GET':
+        if request.method == 'POST':
             return self.favorite_adding(request, recipe.id)
         return self.delete_from_favorit(request, recipe.id)
 
@@ -263,12 +242,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_400_BAD_REQUEST)
 
     @action(
-        methods=('get', 'delete',),
+        methods=('post', 'delete',),
         detail=True,
         permission_classes=(IsAuthenticated,)
     )
     def shopping_cart(self, request, pk=None):
         recipe = get_object_or_404(Recipe, id=pk)
-        if request.method == 'GET':
+        if request.method == 'POST':
             return self.add_to_shopping_cart(request, recipe.id)
         return self.delete_from_shopping_cart(request, recipe.id)
