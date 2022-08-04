@@ -77,13 +77,10 @@ API для проекта Foodgram - приложение «Продуктовы
     *$ docker-compose exec web python manage.py makemigrations*
     *$ docker-compose exec web python manage.py migrate*
 
-6. Админка доступна по адресу http://51.250.98.29:8000/admin/
-
-## **Система API:**
-После запуска проекта доступна система API
-по адресу http://51.250.98.29:8000/api/ **FoodGram**.
+6. URLs сайта **FoodGram**:
+   - Сайт http://51.250.98.29/signin
+   - Административный портал доступен по адресу http://51.250.98.29/admin/
+   - API архитектура доступна по адресу http://51.250.98.29/api/
 
 ## **Автор:**
 *Matsakova Aysa*
-
-*Планы по импрувизации:* Апргейд процесса скачивания списка покупок.
