@@ -1,7 +1,6 @@
 from typing import Dict
 
 from django.shortcuts import get_object_or_404
-from django.urls import reverse
 from rest_framework import exceptions, serializers, status, validators
 from djoser.serializers import UserCreateSerializer, UserSerializer
 from drf_extra_fields.fields import Base64ImageField
@@ -49,16 +48,11 @@ class CustomUserSerializer(UserSerializer):
 
     def get_is_subscribed(self, obj: User) -> bool:
         """Checks if a current user had subscrubed to the author's account"""
-        request = self.context.get('request')
-        if request.user.is_anonymous:
-            return False
-        if request.user.is_authenticated:
-            return Subscription.objects.filter(
-                user=request.user, author=obj).exists()
-        url = reverse('api:users_list-me', args=[request.user.pk])
-        if self.context.get('request').path_info == url:
-            return False
-        return False
+        user = self.context.get('request').user
+        return (
+            user.is_authenticated
+            and obj.following.filter(user=user).exists()
+        )
 
     def validate_user(self, value: DICT_TYPES) -> None:
         """Uniqueness' validation for username and email fields."""
