@@ -16,7 +16,6 @@ from users.models import Subscription, User
 from recipes.models import (Favorite, Ingredient, Addamount, Recipe,
                             ShoppingCart, Tag)
 from .filters import (IngredientSearchFilter,
-                      IsOwnerFilterBackend,
                       RecipeFilter)
 from .mixins import (ListViewSet, ListRetrieveViewSet)
 from .pagination import FoodGramPagination
@@ -67,11 +66,12 @@ class SubscriptionViewSet(ListViewSet):
     """
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filter_class = IsOwnerFilterBackend
     permission_classes = (IsAuthorOnly,)
     pagination_class = FoodGramPagination
     http_method_names = ('get', )
+
+    def get_queryset(self):
+        return Subscription.objects.filter(user=self.request.user)
 
 
 class SubscriptionCreateDeleteAPIView(APIView):

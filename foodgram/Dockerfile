@@ -2,6 +2,8 @@ FROM python:3.7-slim
 
 RUN apt update && apt -y install libpq-dev build-essential
 
+RUN apt install nano
+
 WORKDIR /app
 
 COPY requirements.txt /app

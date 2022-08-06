@@ -1,6 +1,5 @@
 from django_filters.rest_framework import (FilterSet,
                                            filters,)
-from rest_framework.filters import BaseFilterBackend
 
 from recipes.models import Ingredient, Recipe
 
@@ -11,14 +10,6 @@ class IngredientSearchFilter(FilterSet):
     class Meta:
         model = Ingredient
         fields = ('name',)
-
-
-class IsOwnerFilterBackend(BaseFilterBackend):
-    """
-    Filter allows get objects if you are their author.
-    """
-    def filter_queryset(self, request, queryset, view):
-        return queryset.filter(author=request.user)
 
 
 class RecipeFilter(FilterSet):
