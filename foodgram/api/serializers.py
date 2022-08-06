@@ -419,7 +419,7 @@ class RecipeManipulationSerializer(serializers.ModelSerializer):
                 Ingredient,
                 id=item['id']
             )
-            if item.get('amount') < MINIMUM:
+            if int(item.get('amount')) < MINIMUM:
                 raise serializers.ValidationError(
                     detail=('Укажите необходимое количество '
                             f'ингредиента {ingredient}.'),
