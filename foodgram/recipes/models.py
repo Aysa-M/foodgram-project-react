@@ -3,6 +3,8 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.urls import reverse
 
+from colorfield.fields import ColorField
+
 from .validators import validate_not_empty
 
 USER = settings.AUTH_USER_MODEL
@@ -42,11 +44,12 @@ class Tag(models.Model):
         unique=True,
         blank=False
     )
-    color = models.CharField(
+    color = ColorField(
         verbose_name='Цветовой HEX-код',
         default='#337f37',
         max_length=7,
         unique=True,
+        format='hex'
     )
     slug = models.SlugField(
         verbose_name='slug тега',

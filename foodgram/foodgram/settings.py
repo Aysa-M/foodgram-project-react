@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django_filters',
     'reportlab',
     'django_extensions',
+    'colorfield',
     'users.apps.UsersConfig',
     'api.apps.ApiConfig',
     'recipes.apps.RecipesConfig',

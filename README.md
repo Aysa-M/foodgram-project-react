@@ -39,15 +39,18 @@ API для проекта Foodgram - приложение «Продуктовы
  
 2. Создайте виртуальное окружение (venv) - должен быть флажок в начале строки:
     *$ python -m venv venv*
+
+3. Активируйте виртуальное окружение (venv):
+    *$ source venv/Scripts/activate*
  
-3. Установите зависимости:
+4. Установите зависимости:
     *$ pip install -r requirements.txt*
 
-4. Создайте и примените миграции:
+5. Создайте и примените миграции:
     *$ python manage.py makemigrations*
     *$ python manage.py migrate*
 
-5. Запустите django сервер:
+6. Запустите django сервер:
     *$ python manage.py runserver*
 
 ### Деплой проекта на боевой сервер с помощью образа Docker:
